@@ -1,28 +1,10 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { db } from '../db/database';
+import bcrypt from 'bcrypt';
 
-const JWT_SECRET = 'your-secret-key';
-const JWT_REFRESH_SECRET = 'your-refresh-secret-key';
-
-// In-memory storage
-const users = [
-  {
-    id: '1',
-    email: 'admin@example.com',
-    password: 'password',
-    name: 'Admin User',
-    role: 'admin',
-    refreshToken: null as string | null,
-  },
-  {
-    id: '2',
-    email: 'faculty@example.com',
-    password: 'password',
-    name: 'Faculty User',
-    role: 'faculty',
-    refreshToken: null as string | null,
-  },
-];
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
 
 // Token blacklist for logged out tokens
 const tokenBlacklist = new Set<string>();
@@ -36,9 +18,18 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Find user
-    const user = users.find(u => u.email === email && u.password === password);
+    const { rows: [user] } = await db.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
     
     if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -56,7 +47,16 @@ export const login = async (req: Request, res: Response) => {
     );
 
     // Save refresh token
-    user.refreshToken = refreshToken;
+    await db.query(
+      'UPDATE users SET refresh_token = $1 WHERE id = $2',
+      [refreshToken, user.id]
+    );
+
+    // Update last active timestamp
+    await db.query(
+      'UPDATE users SET last_active = NOW() WHERE id = $1',
+      [user.id]
+    );
 
     // Return user info and tokens
     res.json({
@@ -86,11 +86,11 @@ export const logout = async (req: Request, res: Response) => {
     tokenBlacklist.add(token);
 
     // Clear refresh token
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    const user = users.find(u => u.id === decoded.userId);
-    if (user) {
-      user.refreshToken = null;
-    }
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    await db.query(
+      'UPDATE users SET refresh_token = NULL WHERE id = $1',
+      [decoded.userId]
+    );
 
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
@@ -108,8 +108,11 @@ export const refreshToken = async (req: Request, res: Response) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as { userId: string };
-    const user = users.find(u => u.id === decoded.userId && u.refreshToken === refreshToken);
+    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as { userId: number };
+    const { rows: [user] } = await db.query(
+      'SELECT * FROM users WHERE id = $1 AND refresh_token = $2',
+      [decoded.userId, refreshToken]
+    );
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid token' });
@@ -120,6 +123,12 @@ export const refreshToken = async (req: Request, res: Response) => {
       { userId: user.id, role: user.role },
       JWT_SECRET,
       { expiresIn: '1h' }
+    );
+
+    // Update last active timestamp
+    await db.query(
+      'UPDATE users SET last_active = NOW() WHERE id = $1',
+      [user.id]
     );
 
     res.json({ accessToken });

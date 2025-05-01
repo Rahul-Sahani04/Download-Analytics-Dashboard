@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import analyticsRoutes from './routes/analytics';
 import usersRoutes from './routes/users';
+import resurcesRoutes from './routes/resources';
 import { checkTokenBlacklist } from './controllers/authController';
 
 // Load environment variables
@@ -25,6 +26,7 @@ app.use(checkTokenBlacklist);
 app.use('/api/auth', authRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/resources', resurcesRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

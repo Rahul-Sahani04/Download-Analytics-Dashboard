@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Menu, X, Download, Home, Users, LogOut, Sun, Moon, Settings } from 'lucide-react';
+import { Menu, X, Download, Home, Users, LogOut, Sun, Moon, Settings, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/components/theme-provider';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -26,6 +26,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navigation: NavItem[] = [
     { name: 'Dashboard', route: 'dashboard', icon: Home },
+    { name: 'Resources', route: 'resources', icon: FolderOpen },
     { name: 'Users', route: 'users', icon: Users },
     { name: 'Settings', route: 'settings', icon: Settings },
   ];

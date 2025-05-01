@@ -85,15 +85,33 @@ interface FileUploadRequest extends Request {
   file?: UploadedFile;
 }
 
+interface SearchQueryParams {
+  query: string;
+  type: string;
+  page: number;
+  limit: number;
+}
+
 // Search endpoint
 export const searchResources = async (req: Request, res: Response): Promise<void> => {
   try {
-    const query = req.query.query as string | undefined;
-    const type = req.query.type as string | undefined;
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
 
+    // Extract query parameters
+    const queryParams = req.query.params as unknown as SearchQueryParams;
+
+    let { query, type, page, limit } = queryParams || {};
+
+    // Validate and default query parameters
+    query = query || '';
+    type = type || 'all';
+    page = Number(page) || 1;
+    limit = Number(limit) || 10;
+
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
+    if (limit > 100) limit = 100; // Limit to a maximum of 100 results
+
+    const offset = (page - 1) * limit;
     const conditions: string[] = [];
     const params: any[] = [];
     let paramCount = 0;
@@ -174,6 +192,7 @@ export const searchResources = async (req: Request, res: Response): Promise<void
     });
   }
 };
+
 
 // File validation
 const validateFileUpload = (file: UploadedFile): FileUploadValidation => {
@@ -269,7 +288,8 @@ export const uploadResource = async (req: FileUploadRequest, res: Response) => {
 // Download endpoint
 export const downloadResource = async (req: Request, res: Response) => {
   try {
-    const { resourceId } = req.params;
+    console.log('Download request received');
+    const resourceId = Number(req.params.resourceId);
     const userId = (req as any).user?.userId;
 
     const { rows: [resource] }: QueryResult<Resource> = await db.query(
@@ -281,40 +301,64 @@ export const downloadResource = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Resource not found' });
     }
 
-    const ipAddress = req.ip?.replace('::ffff:', '') || '0.0.0.0';
-    
-    await db.query(
-      `INSERT INTO downloads (
-        resource_id, user_id, ip_address, user_agent,
-        bytes_transferred, status, country, city, download_date
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-      [
-        Number(resourceId),
-        userId ? Number(userId) : null,
-        ipAddress,
-        req.headers['user-agent'] || null,
-        resource.file_size,
-        'completed',
-        'Unknown',
-        'Unknown'
-      ]
-    );
-
-    await db.query(
-      'UPDATE resources SET download_count = download_count + 1 WHERE id = $1',
-      [resourceId]
-    );
-
-    const filePath = path.join(process.cwd(), resource.file_path);
+    // Resolve the absolute file path
+    const filePath = path.resolve(process.cwd(), resource.file_path);
+    console.log('Attempting to download file:', filePath);
     
     if (!fs.existsSync(filePath)) {
+      console.error('File not found at path:', filePath);
       return res.status(404).json({ error: 'File not found' });
     }
 
-    const fileName = path.basename(filePath);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    // Get original filename from metadata or fallback to path basename
+    const fileName = resource.metadata?.originalName || path.basename(filePath);
+
+    // Set headers for download
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
     res.setHeader('Content-Type', resource.mime_type);
-    fs.createReadStream(filePath).pipe(res);
+    res.setHeader('Content-Length', resource.file_size);
+
+    // Start the download
+    const stream = fs.createReadStream(filePath);
+    stream.on('error', (error) => {
+      console.error('Stream error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to download resource' });
+      }
+    });
+
+    stream.pipe(res);
+
+    // Log the download after the stream ends successfully
+    stream.on('end', async () => {
+      try {
+        const ipAddress = req.ip?.replace('::ffff:', '') || '0.0.0.0';
+        
+        await db.query(
+          `INSERT INTO downloads (
+            resource_id, user_id, ip_address, user_agent,
+            bytes_transferred, status, country, city, download_date
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+          [
+            resourceId,
+            userId ? Number(userId) : null,
+            ipAddress,
+            req.headers['user-agent'] || null,
+            resource.file_size,
+            'completed',
+            'Unknown',
+            'Unknown'
+          ]
+        );
+
+        await db.query(
+          'UPDATE resources SET download_count = download_count + 1 WHERE id = $1',
+          [resourceId]
+        );
+      } catch (error) {
+        console.error('Error logging download:', error);
+      }
+    });
   } catch (error) {
     console.error('Error downloading resource:', error);
     res.status(500).json({

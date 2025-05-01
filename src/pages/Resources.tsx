@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { downloadService } from "@/services/download-service";
 import { resourcesService } from "@/services/resources-service";
 import { FileIcon, DownloadIcon, SearchIcon } from 'lucide-react';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 
 interface Resource {
   id: number;
@@ -32,10 +32,15 @@ export default function Resources() {
   const [search, setSearch] = useState('');
   const { toast } = useToast();
 
+  useEffect(() => {
+    fetchResources();
+  }, []);
+
   const fetchResources = async (query = '') => {
     try {
       const response = await resourcesService.searchResources(query);
       setResources(response.results);
+      console.log('Resources fetched:', response.results);
     } catch (error) {
       toast({
         title: "Error",
@@ -47,7 +52,7 @@ export default function Resources() {
 
   const handleDownload = async (resourceId: number) => {
     try {
-      await downloadService.downloadResource(resourceId);
+      await resourcesService.downloadResource(resourceId.toString());
       toast({
         title: "Success",
         description: "Download started",
@@ -61,20 +66,30 @@ export default function Resources() {
     }
   };
 
-  const formatFileSize = (bytes: number) => {
+  const formatFileSize = (bytes: number | null | undefined) => {
+    if (!bytes || isNaN(bytes)) {
+      return "0 B"; // Default value for invalid or missing file size
+    }
+  
     const units = ['B', 'KB', 'MB', 'GB'];
-    let size = bytes;
-    let unitIndex = 0;
     
+    let size = bytes;
+    // Convert to number if it's a string
+    if (typeof size === 'string') {
+      size = parseFloat(size);
+    }
+    let unitIndex = 0;
+  
     while (size >= 1024 && unitIndex < units.length - 1) {
       size /= 1024;
       unitIndex++;
     }
-    
-    return `${size.toFixed(1)} ${units[unitIndex]}`;
+  
+    return `${size.toFixed(1)}  ${units[unitIndex]}`;
   };
 
   return (
+    <DashboardLayout>
     <div className="container mx-auto py-6">
       <Card className="p-6">
         <div className="mb-6">
@@ -141,5 +156,6 @@ export default function Resources() {
         </div>
       </Card>
     </div>
+  </DashboardLayout>
   );
 }

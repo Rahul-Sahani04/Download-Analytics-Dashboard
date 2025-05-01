@@ -2,16 +2,26 @@ import { apiClient } from './api-client';
 import { AxiosResponse } from 'axios';
 
 interface Resource {
-  id: string;
+  id: number;
   title: string;
-  description: string;
+  description: string | null;
   type: string;
   fileName: string;
   fileSize: number;
-  author: string;
+  author: string | null;
   downloadCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+interface SearchResponse {
+  results: Resource[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
 }
 
 export const getResource = async (resourceId: string): Promise<Resource> => {
@@ -20,34 +30,41 @@ export const getResource = async (resourceId: string): Promise<Resource> => {
 };
 
 export const downloadResource = async (resourceId: string): Promise<void> => {
-  const response: AxiosResponse<Blob> = await apiClient.get(`/resources/${resourceId}/download`, {
-    responseType: 'blob'
-  });
-  
-  // Create a URL for the blob
-  const url = window.URL.createObjectURL(new Blob([response.data]));
-  
-  // Create a temporary link element
-  const link = document.createElement('a');
-  link.href = url;
-  
-  // Try to get filename from Content-Disposition header or fallback to resourceId
-  let fileName = `resource-${resourceId}`;
-  const contentDisposition = response.headers['content-disposition'];
-  if (contentDisposition) {
-    const match = contentDisposition.match(/filename="(.+)"/);
-    if (match) {
-      fileName = match[1];
+  try {
+    const response: AxiosResponse<Blob> = await apiClient.get(`/resources/${resourceId}/download`, {
+      responseType: 'blob'
+    });
+    
+    // Create a URL for the blob
+    const blob = new Blob([response.data], { type: response.headers['content-type'] });
+    const url = window.URL.createObjectURL(blob);
+    
+    // Get filename from Content-Disposition header
+    let fileName = `resource-${resourceId}`;
+    const contentDisposition = response.headers['content-disposition'];
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="([^"]+)"/);
+      if (match) {
+        fileName = decodeURIComponent(match[1]);
+      }
     }
+    
+    // Create and trigger download link
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+  } catch (error) {
+    console.error('Download error:', error);
+    throw error;
   }
-  
-  link.setAttribute('download', fileName);
-  
-  // Append to body, click, and cleanup
-  document.body.appendChild(link);
-  link.click();
-  link.parentNode?.removeChild(link);
-  window.URL.revokeObjectURL(url);
 };
 
 export const openResource = async (resourceId: string): Promise<void> => {
@@ -55,10 +72,18 @@ export const openResource = async (resourceId: string): Promise<void> => {
   window.open(resource.fileName, '_blank');
 };
 
+export const searchResources = async (query: string = ''): Promise<SearchResponse> => {
+  const response: SearchResponse = await apiClient.get('/resources/search', {
+    params: { query }
+  });
+  return response;
+};
+
 export const resourcesService = {
   getResource,
   downloadResource,
   openResource,
+  searchResources,
 };
 
 export default resourcesService;

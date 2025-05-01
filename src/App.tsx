@@ -5,9 +5,10 @@ import { AuthProvider, useAuth } from "@/context/auth-context";
 import Dashboard from "@/pages/Dashboard";
 import Users from "@/pages/Users";
 import Settings from "@/pages/Settings";
+import Resources from "@/pages/Resources";
 import Login from "@/pages/Login";
 
-export type Route = 'dashboard' | 'users' | 'settings';
+export type Route = 'dashboard' | 'users' | 'settings' | 'resources';
 
 export const RouteContext = createContext<{
   currentRoute: Route;
@@ -39,6 +40,8 @@ function AppContent() {
         return <Users />;
       case 'settings':
         return <Settings />;
+      case 'resources':
+        return <Resources />;
       default:
         return <Dashboard />;
     }
