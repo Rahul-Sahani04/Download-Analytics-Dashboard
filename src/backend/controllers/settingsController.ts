@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { sql } from '../db/database';
+import { db } from '../db/database';
 import bcrypt from 'bcryptjs';
 import { hashPassword } from './authController';
 
@@ -14,7 +14,7 @@ export const getUserSettings = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'User ID not found in token' });
     }
     
-    const [user] = await sql`
+    const result = await db.query(`
       SELECT 
         name,
         email,
@@ -29,8 +29,10 @@ export const getUserSettings = async (req: Request, res: Response) => {
         settings->>'activityVisible' as "activityVisible",
         settings->>'dataRetention' as "dataRetention"
       FROM users
-      WHERE id = ${userId}
-    `;
+      WHERE id = $1
+    `, [userId]);
+
+    const user = result.rows[0];
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -69,9 +71,8 @@ export const updateProfile = async (req: Request, res: Response) => {
 
     // If updating password, verify current password
     if (currentPassword && newPassword) {
-      const [user] = await sql`
-        SELECT password FROM users WHERE id = ${userId}
-      `;
+      const result = await db.query('SELECT password FROM users WHERE id = $1', [userId]);
+      const user = result.rows[0];
 
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
@@ -83,23 +84,22 @@ export const updateProfile = async (req: Request, res: Response) => {
       }
 
       const hashedPassword = await hashPassword(newPassword);
-      await sql`
-        UPDATE users
-        SET password = ${hashedPassword}
-        WHERE id = ${userId}
-      `;
+      await db.query(
+        'UPDATE users SET password = $1 WHERE id = $2',
+        [hashedPassword, userId]
+      );
     }
 
     // Update profile fields
-    await sql`
+    await db.query(`
       UPDATE users
       SET
-        name = COALESCE(${name}, name),
-        email = COALESCE(${email}, email),
-        department = COALESCE(${department}, department),
+        name = COALESCE($1, name),
+        email = COALESCE($2, email),
+        department = COALESCE($3, department),
         updated_at = NOW()
-      WHERE id = ${userId}
-    `;
+      WHERE id = $4
+    `, [name, email, department, userId]);
 
     res.json({
       data: { message: 'Profile updated successfully' }
@@ -119,17 +119,17 @@ export const updateSettings = async (req: Request, res: Response) => {
     const { preferences, notifications, privacy } = req.body;
 
     // Update settings JSON field
-    await sql`
+    await db.query(`
       UPDATE users
       SET
-        settings = settings || ${sql.json({
-          ...preferences,
-          ...notifications,
-          ...privacy
-        })},
+        settings = settings || $1,
         updated_at = NOW()
-      WHERE id = ${userId}
-    `;
+      WHERE id = $2
+    `, [JSON.stringify({
+      ...preferences,
+      ...notifications,
+      ...privacy
+    }), userId]);
 
     res.json({
       data: { message: 'Settings updated successfully' }

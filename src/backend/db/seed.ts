@@ -13,7 +13,6 @@ import * as path from 'path';
 
 async function seed() {
   try {
-
     // Drop existing tables and sequences if they exist
     await db.query('DROP TABLE IF EXISTS downloads CASCADE');
     await db.query('DROP TABLE IF EXISTS resources CASCADE');
@@ -30,74 +29,86 @@ async function seed() {
     await db.query(createDownloadsTable);
     await db.query(createDownloadIndexes);
 
-    // Sample users data
+    // Sample users data with role-specific settings
     const users = [
       {
         name: 'Admin User',
         email: 'admin@campus.edu',
         password: 'admin123',
         role: 'admin',
-        department: 'Administration'
+        department: 'Administration',
+        settings: {
+          analyticsEnabled: true,
+          autoDownloadEnabled: true,
+          emailNotifications: true,
+          activityUpdates: true,
+          newResourceAlerts: true,
+          publicProfile: false,
+          activityVisible: true,
+          dataRetention: '1year'
+        }
       },
       {
         name: 'Dr. Sarah Johnson',
         email: 'sarah.j@campus.edu',
         password: 'faculty123',
         role: 'faculty',
-        department: 'Computer Science'
+        department: 'Computer Science',
+        settings: {
+          analyticsEnabled: true,
+          autoDownloadEnabled: false,
+          emailNotifications: true,
+          activityUpdates: true,
+          newResourceAlerts: true,
+          publicProfile: true,
+          activityVisible: true,
+          dataRetention: '6months'
+        }
       },
       {
         name: 'Prof. Michael Chen',
         email: 'michael.c@campus.edu',
         password: 'faculty123',
         role: 'faculty',
-        department: 'Engineering'
+        department: 'Engineering',
+        settings: {
+          analyticsEnabled: true,
+          autoDownloadEnabled: false,
+          emailNotifications: true,
+          activityUpdates: true,
+          newResourceAlerts: true,
+          publicProfile: true,
+          activityVisible: true,
+          dataRetention: '6months'
+        }
       },
       {
         name: 'Dr. Emily Williams',
         email: 'emily.w@campus.edu',
         password: 'faculty123',
         role: 'faculty',
-        department: 'Physics'
-      },
-      {
-        name: 'John Smith',
-        email: 'john.s@campus.edu',
-        password: 'student123',
-        role: 'student',
-        department: 'Computer Science'
-      },
-      {
-        name: 'Maria Garcia',
-        email: 'maria.g@campus.edu',
-        password: 'student123',
-        role: 'student',
-        department: 'Engineering'
-      },
-      {
-        name: 'David Lee',
-        email: 'david.l@campus.edu',
-        password: 'staff123',
-        role: 'staff',
-        department: 'Library'
-      },
-      {
-        name: 'James Wilson',
-        email: 'james.w@campus.edu',
-        password: 'researcher123',
-        role: 'researcher',
-        department: 'Physics'
+        department: 'Physics',
+        settings: {
+          analyticsEnabled: true,
+          autoDownloadEnabled: false,
+          emailNotifications: true,
+          activityUpdates: true,
+          newResourceAlerts: true,
+          publicProfile: true,
+          activityVisible: true,
+          dataRetention: '6months'
+        }
       }
     ];
 
-    // Insert users with hashed passwords
+    // Insert users with hashed passwords and settings
     for (const user of users) {
       const hashedPassword = await bcrypt.hash(user.password, 10);
       await db.query(
-        `INSERT INTO users (name, email, password, role, department) 
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO users (name, email, password, role, department, settings) 
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (email) DO NOTHING`,
-        [user.name, user.email, hashedPassword, user.role, user.department]
+        [user.name, user.email, hashedPassword, user.role, user.department, user.settings]
       );
     }
 
@@ -185,6 +196,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       process.exit(1);
     });
 }
-
 
 export { seed };

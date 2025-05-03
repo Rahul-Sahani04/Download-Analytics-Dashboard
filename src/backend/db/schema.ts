@@ -65,8 +65,19 @@ export const createUsersTable = `
     role VARCHAR(50) NOT NULL DEFAULT 'student',
     department VARCHAR(100) NOT NULL,
     refresh_token TEXT,
+    settings JSONB DEFAULT '{
+      "analyticsEnabled": false,
+      "autoDownloadEnabled": false,
+      "emailNotifications": true,
+      "activityUpdates": true,
+      "newResourceAlerts": false,
+      "publicProfile": false,
+      "activityVisible": true,
+      "dataRetention": "6months"
+    }'::jsonb,
     last_active TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
   )
 `;
 
@@ -79,4 +90,5 @@ export const createUserIndexes = `
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
   CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
   CREATE INDEX IF NOT EXISTS idx_users_last_active ON users(last_active);
+  CREATE INDEX IF NOT EXISTS idx_users_settings ON users USING gin (settings);
 `;
