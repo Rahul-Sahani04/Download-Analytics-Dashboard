@@ -1,25 +1,25 @@
-import { db } from './database';
+import { db } from "./database";
 import {
   createUsersTable,
   createUserIndexes,
   createResourcesTable,
   createResourceIndexes,
   createDownloadsTable,
-  createDownloadIndexes
-} from './schema';
-import * as bcrypt from 'bcrypt';
-import * as fs from 'fs';
-import * as path from 'path';
+  createDownloadIndexes,
+} from "./schema";
+import * as bcrypt from "bcrypt";
+import * as fs from "fs";
+import * as path from "path";
 
 async function seed() {
   try {
     // Drop existing tables and sequences if they exist
-    await db.query('DROP TABLE IF EXISTS downloads CASCADE');
-    await db.query('DROP TABLE IF EXISTS resources CASCADE');
-    await db.query('DROP TABLE IF EXISTS users CASCADE');
-    await db.query('DROP SEQUENCE IF EXISTS downloads_id_seq CASCADE');
-    await db.query('DROP SEQUENCE IF EXISTS resources_id_seq CASCADE');
-    await db.query('DROP SEQUENCE IF EXISTS users_id_seq CASCADE');
+    await db.query("DROP TABLE IF EXISTS downloads CASCADE");
+    await db.query("DROP TABLE IF EXISTS resources CASCADE");
+    await db.query("DROP TABLE IF EXISTS users CASCADE");
+    await db.query("DROP SEQUENCE IF EXISTS downloads_id_seq CASCADE");
+    await db.query("DROP SEQUENCE IF EXISTS resources_id_seq CASCADE");
+    await db.query("DROP SEQUENCE IF EXISTS users_id_seq CASCADE");
 
     // Create tables and indexes
     await db.query(createUsersTable);
@@ -32,11 +32,11 @@ async function seed() {
     // Sample users data with role-specific settings
     const users = [
       {
-        name: 'Admin User',
-        email: 'admin@campus.edu',
-        password: 'admin123',
-        role: 'admin',
-        department: 'Administration',
+        name: "Admin User",
+        email: "admin@campus.edu",
+        password: "admin123",
+        role: "admin",
+        department: "Administration",
         settings: {
           analyticsEnabled: true,
           autoDownloadEnabled: true,
@@ -45,15 +45,15 @@ async function seed() {
           newResourceAlerts: true,
           publicProfile: false,
           activityVisible: true,
-          dataRetention: '1year'
-        }
+          dataRetention: "1year",
+        },
       },
       {
-        name: 'Dr. Sarah Johnson',
-        email: 'sarah.j@campus.edu',
-        password: 'faculty123',
-        role: 'faculty',
-        department: 'Computer Science',
+        name: "Dr. Sarah Johnson",
+        email: "sarah.j@campus.edu",
+        password: "faculty123",
+        role: "faculty",
+        department: "Computer Science",
         settings: {
           analyticsEnabled: true,
           autoDownloadEnabled: false,
@@ -62,15 +62,15 @@ async function seed() {
           newResourceAlerts: true,
           publicProfile: true,
           activityVisible: true,
-          dataRetention: '6months'
-        }
+          dataRetention: "6months",
+        },
       },
       {
-        name: 'Prof. Michael Chen',
-        email: 'michael.c@campus.edu',
-        password: 'faculty123',
-        role: 'faculty',
-        department: 'Engineering',
+        name: "Prof. Michael Chen",
+        email: "michael.c@campus.edu",
+        password: "faculty123",
+        role: "faculty",
+        department: "Engineering",
         settings: {
           analyticsEnabled: true,
           autoDownloadEnabled: false,
@@ -79,15 +79,15 @@ async function seed() {
           newResourceAlerts: true,
           publicProfile: true,
           activityVisible: true,
-          dataRetention: '6months'
-        }
+          dataRetention: "6months",
+        },
       },
       {
-        name: 'Dr. Emily Williams',
-        email: 'emily.w@campus.edu',
-        password: 'faculty123',
-        role: 'faculty',
-        department: 'Physics',
+        name: "Dr. Emily Williams",
+        email: "emily.w@campus.edu",
+        password: "faculty123",
+        role: "faculty",
+        department: "Physics",
         settings: {
           analyticsEnabled: true,
           autoDownloadEnabled: false,
@@ -96,9 +96,61 @@ async function seed() {
           newResourceAlerts: true,
           publicProfile: true,
           activityVisible: true,
-          dataRetention: '6months'
-        }
-      }
+          dataRetention: "6months",
+        },
+      },
+      // Students
+      {
+        name: "RS",
+        email: "rs@campus.edu",
+        password: "student123",
+        role: "student",
+        department: "Computer Science",
+        settings: {
+          analyticsEnabled: false,
+          autoDownloadEnabled: false,
+          emailNotifications: true,
+          activityUpdates: true,
+          newResourceAlerts: false,
+          publicProfile: true,
+          activityVisible: true,
+          dataRetention: "3months",
+        },
+      },
+      {
+        name: "Ritu",
+        email: "ritu@campus.edu",
+        password: "student123",
+        role: "student",
+        department: "Computer Science",
+        settings: {
+          analyticsEnabled: false,
+          autoDownloadEnabled: false,
+          emailNotifications: true,
+          activityUpdates: true,
+          newResourceAlerts: false,
+          publicProfile: true,
+          activityVisible: true,
+          dataRetention: "3months",
+        },
+      },
+      {
+        name: "Sanya",
+        email: "sanya@campus.edu",
+        password: "student123",
+        role: "student",
+        department: "Computer Science",
+        settings: {
+          analyticsEnabled: false,
+          autoDownloadEnabled: false,
+          emailNotifications: true,
+          activityUpdates: true,
+          newResourceAlerts: false,
+          publicProfile: true,
+          activityVisible: true,
+          dataRetention: "3months",
+        },
+      },
     ];
 
     // Insert users with hashed passwords and settings
@@ -108,7 +160,14 @@ async function seed() {
         `INSERT INTO users (name, email, password, role, department, settings) 
          VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (email) DO NOTHING`,
-        [user.name, user.email, hashedPassword, user.role, user.department, user.settings]
+        [
+          user.name,
+          user.email,
+          hashedPassword,
+          user.role,
+          user.department,
+          user.settings,
+        ]
       );
     }
 
@@ -118,7 +177,7 @@ async function seed() {
       "UPDATE users SET last_active = NOW() - INTERVAL '5 minutes' WHERE role = 'faculty'",
       "UPDATE users SET last_active = NOW() - INTERVAL '30 minutes' WHERE role = 'student'",
       "UPDATE users SET last_active = NOW() - INTERVAL '2 hours' WHERE role = 'staff'",
-      "UPDATE users SET last_active = NOW() - INTERVAL '1 day' WHERE role = 'researcher'"
+      "UPDATE users SET last_active = NOW() - INTERVAL '1 day' WHERE role = 'researcher'",
     ];
 
     for (const query of timeQueries) {
@@ -126,32 +185,35 @@ async function seed() {
     }
 
     // Seed resources from uploads/resources directory
-    const resourcesDir = 'uploads/resources';
+    const resourcesDir = "uploads/resources";
     const files = fs.readdirSync(resourcesDir);
-    const adminUser = await db.query("SELECT id FROM users WHERE email = 'admin@campus.edu'");
+    const adminUser = await db.query(
+      "SELECT id FROM users WHERE email = 'admin@campus.edu'"
+    );
     const adminId = adminUser.rows[0].id;
 
     for (const file of files) {
       const filePath = path.join(resourcesDir, file);
       const stats = fs.statSync(filePath);
       const ext = path.extname(file).toLowerCase();
-      
+
       // Determine mime type based on extension
       const mimeTypes: { [key: string]: string } = {
-        '.md': 'text/markdown',
-        '.txt': 'text/plain',
-        '.mp3': 'audio/mpeg'
+        ".md": "text/markdown",
+        ".txt": "text/plain",
+        ".mp3": "audio/mpeg",
       };
 
-      const mimeType = mimeTypes[ext] || 'application/octet-stream';
-      const title = path.basename(file, ext)
-        .split('-')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+      const mimeType = mimeTypes[ext] || "application/octet-stream";
+      const title = path
+        .basename(file, ext)
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
 
       const metadata = {
-        type: mimeType.split('/')[0],
-        originalName: file
+        type: mimeType.split("/")[0],
+        originalName: file,
       };
 
       await db.query(
@@ -175,14 +237,14 @@ async function seed() {
           mimeType,
           adminId,
           metadata,
-          Math.floor(Math.random() * 100) // Random download count for sample data
+          Math.floor(Math.random() * 100), // Random download count for sample data
         ]
       );
     }
 
-    console.log('✅ Database seeded successfully');
+    console.log("✅ Database seeded successfully");
   } catch (error) {
-    console.error('❌ Error seeding database:', error);
+    console.error("❌ Error seeding database:", error);
     throw error;
   }
 }

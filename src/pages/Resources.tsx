@@ -40,7 +40,6 @@ export default function Resources() {
     try {
       const response = await resourcesService.searchResources(query);
       setResources(response.results);
-      console.log('Resources fetched:', response.results);
     } catch (error) {
       toast({
         title: "Error",

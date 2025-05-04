@@ -12,6 +12,7 @@ import { Route, useRoute } from '@/App';
 interface NavItem {
   name: string;
   route: Route;
+  show?: boolean;
   icon: React.ElementType;
 }
 
@@ -25,10 +26,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, logout } = useAuth();
 
   const navigation: NavItem[] = [
-    { name: 'Dashboard', route: 'dashboard', icon: Home },
-    { name: 'Resources', route: 'resources', icon: FolderOpen },
-    { name: 'Users', route: 'users', icon: Users },
-    { name: 'Settings', route: 'settings', icon: Settings },
+    { name: 'Dashboard', route: 'dashboard', icon: Home, show: user?.role !== 'admin' },
+    { name: 'Resources', route: 'resources', icon: FolderOpen, show: user?.role !== 'admin' },
+    { name: 'Users', route: 'users', icon: Users , show: user?.role === 'admin'},
+    { name: 'Settings', route: 'settings', icon: Settings, show: user?.role !== 'admin' },
   ];
 
   const { currentRoute, setCurrentRoute } = useRoute();
@@ -54,7 +55,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
           <div className="mt-5 flex-1 flex flex-col">
             <nav className="flex-1 px-4 space-y-1">
-              {navigation.map((item) => (
+              {navigation.map((item) => 
+              item.show === true ? (
                 <button
                   key={item.name}
                   onClick={() => handleNavigation(item.route)}
@@ -74,7 +76,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                   {item.name}
                 </button>
-              ))}
+                ) : null 
+              )}
             </nav>
           </div>
           <div className="flex-shrink-0 flex border-t p-4">

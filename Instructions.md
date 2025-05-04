@@ -42,8 +42,8 @@ CREATE DATABASE your_database_name;
 ```env
 PGUSER=postgres
 PGHOST=localhost
-PGPASSWORD=
-PGDATABASE=filemanagement
+PGPASSWORD=your_password
+PGDATABASE=your_database_name
 PGPORT=5432
 PORT=5000
 ```
@@ -66,6 +66,12 @@ const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
+
+// Create .gitkeep to ensure directory is tracked
+const gitkeepPath = path.join(uploadDir, '.gitkeep');
+if (!fs.existsSync(gitkeepPath)) {
+  fs.writeFileSync(gitkeepPath, '');
+}
 ```
 
 3. **Database Model**
@@ -74,17 +80,28 @@ if (!fs.existsSync(uploadDir)) {
 const db = require('../db');
 
 const createTable = async () => {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS files (
-      id SERIAL PRIMARY KEY,
-      filename VARCHAR(255) NOT NULL,
-      filepath VARCHAR(255) NOT NULL,
-      mimetype VARCHAR(100) NOT NULL,
-      size INT NOT NULL,
-      uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  try {
+    // Drop the existing table if it exists with wrong schema
+    await db.query('DROP TABLE IF EXISTS files');
+    
+    // Create the table with the correct schema
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS files (
+        id SERIAL PRIMARY KEY,
+        filename VARCHAR(255) NOT NULL,
+        filepath VARCHAR(255) NOT NULL,
+        mimetype VARCHAR(100) NOT NULL,
+        size INT NOT NULL,
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  } catch (error) {
+    console.error('Error creating table:', error);
+    throw error;
+  }
 };
+
+createTable();
 
 module.exports = {
   saveFile: async (filename, filepath, mimetype, size) => {
@@ -200,12 +217,23 @@ module.exports = {
 
 1. **File Upload Component**
 ```jsx
+import { useState } from 'react';
+import { FiUpload, FiX } from 'react-icons/fi';
+import toast from 'react-hot-toast';
+
 const FileUpload = ({ onUploadSuccess }) => {
   const [file, setFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (!file) {
       toast.error('Please select a file first');
       return;
@@ -218,7 +246,7 @@ const FileUpload = ({ onUploadSuccess }) => {
       setIsUploading(true);
       const response = await fetch('http://localhost:5000/api/upload', {
         method: 'POST',
-        body: formData
+        body: formData,
       });
 
       if (!response.ok) {
@@ -227,6 +255,7 @@ const FileUpload = ({ onUploadSuccess }) => {
 
       toast.success('File uploaded successfully!');
       setFile(null);
+      document.getElementById('file-upload').value = '';
       onUploadSuccess();
     } catch (error) {
       console.error('Upload error:', error);
@@ -236,15 +265,57 @@ const FileUpload = ({ onUploadSuccess }) => {
     }
   };
 
+  const removeFile = () => {
+    setFile(null);
+    document.getElementById('file-upload').value = '';
+  };
+
   return (
     <form onSubmit={handleSubmit}>
-      <input
-        type="file"
-        onChange={(e) => setFile(e.target.files[0])}
-      />
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Choose a file to upload
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            id="file-upload"
+            type="file"
+            onChange={handleFileChange}
+            className="block w-full text-sm text-gray-500
+              file:mr-4 file:py-2 file:px-4
+              file:rounded-md file:border-0
+              file:text-sm file:font-semibold
+              file:bg-blue-50 file:text-blue-700
+              hover:file:bg-blue-100"
+          />
+        </div>
+      </div>
+
+      {file && (
+        <div className="mb-4 p-3 bg-gray-50 rounded-md flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <FiUpload className="text-gray-500" />
+            <span className="text-sm text-gray-700">{file.name}</span>
+            <span className="text-xs text-gray-500">
+              {(file.size / 1024 / 1024).toFixed(2)} MB
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={removeFile}
+            className="text-gray-500 hover:text-red-500"
+          >
+            <FiX />
+          </button>
+        </div>
+      )}
+
       <button
         type="submit"
         disabled={!file || isUploading}
+        className={`w-full py-2 px-4 rounded-md text-white font-medium ${
+          isUploading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
+        } disabled:bg-gray-300 disabled:cursor-not-allowed`}
       >
         {isUploading ? 'Uploading...' : 'Upload File'}
       </button>
@@ -255,40 +326,177 @@ const FileUpload = ({ onUploadSuccess }) => {
 
 2. **File List Component**
 ```jsx
-const FileList = () => {
+import { FiDownload, FiFile } from 'react-icons/fi';
+import toast from 'react-hot-toast';
+
+const FileList = ({ files }) => {
+  const handleDownload = async (fileId, filename) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/files/${fileId}/download`);
+      
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      // Create a blob from the response
+      const blob = await response.blob();
+      
+      // Create a temporary URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary anchor element to trigger the download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('Download started!');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download file');
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  if (files.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        No files uploaded yet. Upload your first file above.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              File
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Size
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Uploaded
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {files.map((file) => (
+            <tr key={file.id}>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex items-center">
+                  <FiFile className="flex-shrink-0 h-5 w-5 text-gray-400" />
+                  <div className="ml-4">
+                    <div className="text-sm font-medium text-gray-900">{file.filename}</div>
+                    <div className="text-sm text-gray-500">{file.mimetype}</div>
+                  </div>
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {formatFileSize(file.size)}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {formatDate(file.uploaded_at)}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <button
+                  onClick={() => handleDownload(file.id, file.filename)}
+                  className="text-blue-600 hover:text-blue-900 mr-4 flex items-center"
+                >
+                  <FiDownload className="mr-1" /> Download
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+```
+
+3. **Main App Component**
+```jsx
+import { useState, useEffect } from 'react';
+import FileUpload from './components/FileUpload';
+import FileList from './components/FileList';
+import { Toaster } from 'react-hot-toast';
+
+function App() {
   const [files, setFiles] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFiles();
+  }, []);
 
   const fetchFiles = async () => {
     try {
+      setIsLoading(true);
       const response = await fetch('http://localhost:5000/api/files');
       const data = await response.json();
       setFiles(data);
     } catch (error) {
       console.error('Error fetching files:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleDownload = async (id) => {
-    try {
-      window.location.href = `http://localhost:5000/api/files/${id}/download`;
-    } catch (error) {
-      console.error('Download error:', error);
-    }
+  const handleUploadSuccess = () => {
+    fetchFiles();
   };
 
   return (
-    <div>
-      {files.map(file => (
-        <div key={file.id}>
-          <span>{file.filename}</span>
-          <button onClick={() => handleDownload(file.id)}>
-            Download
-          </button>
+    <div className="min-h-screen bg-gray-100 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
+          File Upload App
+        </h1>
+        
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <FileUpload onUploadSuccess={handleUploadSuccess} />
         </div>
-      ))}
+        
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold text-gray-700 mb-4">
+            Uploaded Files
+          </h2>
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+            </div>
+          ) : (
+            <FileList files={files} />
+          )}
+        </div>
+      </div>
+      <Toaster position="bottom-right" />
     </div>
   );
-};
+}
 ```
 
 ## API Endpoints

@@ -6,6 +6,7 @@ import analyticsRoutes from './routes/analytics';
 import usersRoutes from './routes/users';
 import resurcesRoutes from './routes/resources';
 import settingsRoutes from './routes/settings';
+import filesRoutes from './routes/files';
 import { checkTokenBlacklist } from './controllers/authController';
 
 // Load environment variables
@@ -29,6 +30,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/resources', resurcesRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/files', filesRoutes);
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   const healthcheck = {

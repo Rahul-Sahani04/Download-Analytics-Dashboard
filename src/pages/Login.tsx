@@ -1,40 +1,58 @@
-import { useState } from 'react';
-import { Eye, EyeOff, Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/auth-context';
+import { useState } from "react";
+import { Eye, EyeOff, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const { login } = useAuth();
 
+  const accounts = [
+    {
+      name: "Faculty",
+      email: "sarah.j@campus.edu",
+      password: "faculty123",
+    },
+    {
+      name: "Student",
+      email: "rs@campus.edu",
+      password: "student123",
+    },
+    {
+      name: "Admin",
+      email: "admin@campus.edu",
+      password: "admin123",
+    },
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast({
-        title: 'Error',
-        description: 'Please enter both email and password',
-        variant: 'destructive',
+        title: "Error",
+        description: "Please enter both email and password",
+        variant: "destructive",
       });
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       await login(email, password);
     } catch (error) {
       toast({
-        title: 'Login failed',
-        description: 'Invalid credentials. Please try again.',
-        variant: 'destructive',
+        title: "Login failed",
+        description: "Invalid credentials. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -114,21 +132,21 @@ export default function Login() {
                   </Button>
                 </div>
               </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        <div className="text-center text-sm text-muted-foreground">
+        <div className=" text-sm text-muted-foreground text-justify">
           <p>Demo credentials:</p>
-          <p><strong>Admin:</strong> admin@example.com / password</p>
-          <p><strong>Faculty:</strong> faculty@example.com / password</p>
+          {accounts.map((account) => (
+            <p>
+              <strong>{account.name}</strong> - {account.email} /{" "}
+              {account.password}
+            </p>
+          ))}
         </div>
       </div>
     </div>
