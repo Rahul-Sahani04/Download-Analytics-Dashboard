@@ -10,6 +10,8 @@ import { TimeseriesChart } from '@/components/dashboard/TimeseriesChart';
 import { DownloadService } from '@/services/download-service';
 import { FilterOptions } from '@/types';
 
+const REFRESH_INTERVAL = 30000; // 30 seconds
+
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
@@ -19,18 +21,27 @@ export default function Dashboard() {
     userRole: 'all',
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const data = await DownloadService.getStats(filters);
-        setStats(data);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const data = await DownloadService.getStats(filters);
+      setStats(data);
+      console.log('Fetched stats:', data);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
+
+    // Set up polling
+    const intervalId = setInterval(fetchData, REFRESH_INTERVAL);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
   }, [filters]);
 
   const handleFilterChange = (newFilters: Partial<FilterOptions>) => {
@@ -59,7 +70,7 @@ export default function Dashboard() {
           />
           <DownloadMap 
             isLoading={isLoading} 
-            data={stats?.geoData} 
+            data={stats?.departmentData} 
             className="md:col-span-2 lg:col-span-3"
           />
         </div>

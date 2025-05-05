@@ -9,7 +9,7 @@ interface OverviewStatsProps {
     totalResources: number;
     activeUsers: number;
     averageEngagement: number;
-    downloadChange: number;
+    downloadChange: number | null;
     usersChange: number;
     resourcesChange: number;
     engagementChange: number;
@@ -32,7 +32,7 @@ export function OverviewStats({ isLoading, stats }: OverviewStatsProps) {
       change: stats?.downloadChange,
       formattedValue: formatNumber(stats?.totalDownloads || 0),
       iconClass: 'text-blue-500',
-      changePrefix: stats?.downloadChange >= 0 ? '+' : '',
+      changePrefix: (stats?.downloadChange ?? 0) >= 0 ? '+' : '',
     },
     {
       title: 'Active Users',
@@ -41,7 +41,7 @@ export function OverviewStats({ isLoading, stats }: OverviewStatsProps) {
       change: stats?.usersChange,
       formattedValue: formatNumber(stats?.activeUsers || 0),
       iconClass: 'text-teal-500',
-      changePrefix: stats?.usersChange >= 0 ? '+' : '',
+      changePrefix: (stats?.usersChange ?? 0) >= 0 ? '+' : '',
     },
     {
       title: 'Available Resources',
@@ -50,7 +50,7 @@ export function OverviewStats({ isLoading, stats }: OverviewStatsProps) {
       change: stats?.resourcesChange,
       formattedValue: formatNumber(stats?.totalResources || 0),
       iconClass: 'text-amber-500',
-      changePrefix: stats?.resourcesChange >= 0 ? '+' : '',
+      changePrefix: (stats?.resourcesChange ?? 0) >= 0 ? '+' : '',
     },
     {
       title: 'Avg. Engagement',
@@ -59,7 +59,7 @@ export function OverviewStats({ isLoading, stats }: OverviewStatsProps) {
       change: stats?.engagementChange,
       formattedValue: `${stats?.averageEngagement?.toFixed(1) || 0}m`,
       iconClass: 'text-indigo-500',
-      changePrefix: stats?.engagementChange >= 0 ? '+' : '',
+      changePrefix: (stats?.engagementChange ?? 0) >= 0 ? '+' : '',
     },
   ];
 

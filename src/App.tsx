@@ -5,7 +5,6 @@ import { AuthProvider, useAuth } from "@/context/auth-context";
 import Dashboard from "@/pages/Dashboard";
 import Users from "@/pages/Users";
 import Settings from "@/pages/Settings";
-import Resources from "@/pages/Resources";
 import Files from "@/pages/Files";
 import Login from "@/pages/Login";
 import { FileUploadDownload } from "./components/files/FileUploadDownload";

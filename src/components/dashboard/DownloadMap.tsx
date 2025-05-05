@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 interface DownloadMapProps {
   isLoading: boolean;
   data?: Array<{
-    region: string;
+    department: string;
     downloads: number;
   }>;
   className?: string;
@@ -43,7 +43,7 @@ export function DownloadMap({ isLoading, data, className }: DownloadMapProps) {
     <Card className={cn("", className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base font-medium">
-          Downloads by Location
+          Downloads by Department
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -73,7 +73,7 @@ export function DownloadMap({ isLoading, data, className }: DownloadMapProps) {
                 />
                 <YAxis
                   type="category"
-                  dataKey="region"
+                  dataKey="department"
                   tick={{ fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
@@ -88,10 +88,10 @@ export function DownloadMap({ isLoading, data, className }: DownloadMapProps) {
                           <div className="grid grid-cols-2 gap-2">
                             <div className="flex flex-col">
                               <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                Location
+                                Department
                               </span>
                               <span className="font-bold">
-                                {payload[0].payload.region}
+                                {payload[0].payload.department}
                               </span>
                             </div>
                             <div className="flex flex-col">
@@ -111,13 +111,13 @@ export function DownloadMap({ isLoading, data, className }: DownloadMapProps) {
                 />
                 <Bar dataKey="downloads" radius={[0, 4, 4, 0]}>
                   {sortedData.map((_, index) => (
-                        <Cell
-                        key={`cell-${index}`}
-                        style={{
-                          fill: `var(--chart-${(index % 5) + 1})`, // Dynamically resolve the variable
-                          opacity: 0.6,
-                        }}
-                      />
+                    <Cell
+                      key={`cell-${index}`}
+                      style={{
+                        fill: `var(--chart-${(index % 5) + 1})`,
+                        opacity: 0.6,
+                      }}
+                    />
                   ))}
                 </Bar>
               </BarChart>

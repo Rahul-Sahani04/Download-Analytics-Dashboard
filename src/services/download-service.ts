@@ -126,7 +126,8 @@ export const DownloadService = {
     } catch (error) {
       console.error('Error fetching stats:', error);
       // Fallback to mock data in case of API error
-      return generateMockData();
+      // return generateMockData();
+      throw new Error('Failed to fetch stats');
     }
   },
 
